@@ -149,7 +149,13 @@ mod tests {
     use bytes::{Bytes, BytesMut};
 
     #[test]
-    pub fn body_length() {
+    pub fn body_length_min() {
+        let size = Record::new().body_length();
+        assert_eq!(6, size);
+    }
+
+    #[test]
+    pub fn body_length_value() {
         let size = Record::new()
             .with_timestamp(0)
             .with_offset(0)
