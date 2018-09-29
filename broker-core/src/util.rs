@@ -1,15 +1,14 @@
 use bytes::BufMut;
 
 
-trait VarintPut {
+pub trait VarintPut {
     fn put_i32_varint(&mut self, n: i32);
     fn put_i64_varint(&mut self, n: i64);
     fn put_usize_varint(&mut self, n: usize);
 }
 
 impl<T> VarintPut for T
-where
-    T: BufMut,
+    where T: BufMut
 {
     fn put_i32_varint(&mut self, n: i32) {
         let mut v: i32 = (n << 1) ^ (n >> 31);
@@ -33,6 +32,46 @@ where
 
     fn put_usize_varint(&mut self, n: usize) {
         self.put_i64_varint(n as i64)
+    }
+}
+
+pub trait VarintSize {
+    fn varint_size(&self) -> usize;
+}
+
+impl VarintSize for i32 {
+    fn varint_size(&self) -> usize {
+        let mut v = (*self << 1) ^ (*self >> 31);
+        let mut bytes = 1;
+        while (v & 0xffff80) != 0 {
+            bytes += 1;
+            v >>= 7;
+        }
+        bytes
+    }
+}
+
+impl VarintSize for i64 {
+    fn varint_size(&self) -> usize {
+        let mut v = (*self << 1) ^ (*self >> 63);
+        let mut bytes = 1;
+        while (v & 0xffffffffffff80) != 0 {
+            bytes += 1;
+            v >>= 7;
+        }
+        bytes
+    }
+}
+
+impl VarintSize for usize {
+    fn varint_size(&self) -> usize {
+        let mut v = (*self << 1) ^ (*self >> 63);
+        let mut bytes = 1;
+        while (v & 0xffffffffffff80) != 0 {
+            bytes += 1;
+            v >>= 7;
+        }
+        bytes
     }
 }
 
@@ -75,5 +114,27 @@ mod tests {
 
         let val = bytes.into_buf().get_u16_be();
         assert_eq!(44034, val);
+    }
+
+    #[test]
+    fn sizeof_i32_null() {
+        let val: i32 = -1;
+        assert_eq!(1, val.varint_size())
+    }
+
+    #[test]
+    fn sizeof_i64_null() {
+        let val: i64 = -1;
+        assert_eq!(1, val.varint_size())
+    }
+
+    #[test]
+    fn sizeof_i32_small() {
+        assert_eq!(1, 14i32.varint_size())
+    }
+
+    #[test]
+    fn sizeof_i32_larger() {
+        assert_eq!(2, 150i32.varint_size())
     }
 }
